@@ -39,16 +39,23 @@ const stars = (() => {
   const p = new THREE.Points(g, m); p.renderOrder = -1; p.frustumCulled = false; scene.add(p); return p;
 })();
 
-// ---- Galaxia de polvo dorado (espiral) ----
+// ---- Galaxia de polvo dorado (espiral brillante con agujero negro) ----
 const galU = { uGal: { value: .3 } };
 const galaxy = (() => {
-  const N = 90000, pos = new Float32Array(N * 3), size = new Float32Array(N), seed = new Float32Array(N), rad = new Float32Array(N);
+  const N = 110000, NR = 9000;                    // partículas del remolino + anillo del centro
+  const T = N + NR;
+  const pos = new Float32Array(T * 3), size = new Float32Array(T), seed = new Float32Array(T), rad = new Float32Array(T);
   for (let i = 0; i < N; i++) {
     let r, ang;
-    if (R() < .2) { r = Math.sqrt(R()) * 12.5 + .2; ang = R() * TAU; }
-    else { r = Math.pow(R(), .75) * 12 + .3; ang = r * .62 + ((R() * 3) | 0) * TAU / 3 + gauss() * (.1 + r * .03); }
+    if (R() < .15) { r = Math.sqrt(R()) * 12.5 + .9; ang = R() * TAU; }
+    else { r = Math.pow(R(), .55) * 12 + .9; ang = r * .85 + ((R() * 2) | 0) * Math.PI + gauss() * (.1 + r * .035); }
     pos.set([Math.cos(ang) * r, gauss() * .1 * (1 - r / 15), Math.sin(ang) * r], i * 3);
-    size[i] = 1.4 + R() * R() * 4.2; seed[i] = R(); rad[i] = r;
+    size[i] = 1.3 + R() * R() * 4.2; seed[i] = R(); rad[i] = r;
+  }
+  for (let i = N; i < T; i++) {                   // anillo blanco alrededor del agujero negro
+    const r = 1.0 + R() * .7, ang = R() * TAU;
+    pos.set([Math.cos(ang) * r, gauss() * .02, Math.sin(ang) * r], i * 3);
+    size[i] = 2.5 + R() * 2; seed[i] = R(); rad[i] = r;
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -58,22 +65,28 @@ const galaxy = (() => {
   const m = shader(`
     attribute float aSize; attribute float aSeed; attribute float aR; uniform float uGal; varying float vA; varying vec3 vC;
     void main(){
-      float ang = uTime * (.95 / (1. + aR*.35));
+      float ang = uTime * (.55 / (1. + aR*.35));
       float c = cos(ang), s = sin(ang);
       vec3 p = vec3(position.x*c - position.z*s, position.y, position.x*s + position.z*c);
       vec4 mv = modelViewMatrix * vec4(p,1.);
       gl_Position = projectionMatrix * mv;
       gl_PointSize = aSize * uPx * (15. / (-mv.z));
-      float tw = .6 + .4*sin(uTime*(1.+aSeed*3.) + aSeed*30.);
-      vA = uGal * tw * (1. - smoothstep(9., 13., aR)*.6);
-      vC = mix(vec3(1.,.96,.82), vec3(1.,.72,.18), smoothstep(0., 9., aR));
+      float tw = .7 + .3*sin(uTime*(1.+aSeed*3.) + aSeed*30.);
+      float boost = 1. + 2.5 * (1. - smoothstep(0., 3.5, aR));
+      vA = uGal * tw * boost * (1. - smoothstep(9., 13., aR)*.6);
+      vC = mix(vec3(1.,.98,.9), vec3(1.,.74,.2), smoothstep(0., 7., aR));
     }`, `
     varying float vA; varying vec3 vC;
     void main(){
       float d = length(gl_PointCoord - .5);
       float a = smoothstep(.5, .0, d);
-      gl_FragColor = vec4(vC, a*vA*.55);
+      gl_FragColor = vec4(vC, a*vA*1.0);
     }`, galU);
   const p = new THREE.Points(g, m); p.frustumCulled = false; p.renderOrder = 0; scene.add(p); return p;
 })();
 const core = glowSprite(0xffd27a, 1); core.position.set(0, .15, 0); core.visible = true;
+
+// Agujero negro central
+const hole = new THREE.Mesh(new THREE.CircleGeometry(.85, 48),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthTest: false, depthWrite: false }));
+hole.rotation.x = -Math.PI / 2; hole.position.y = .04; hole.renderOrder = 2; scene.add(hole);

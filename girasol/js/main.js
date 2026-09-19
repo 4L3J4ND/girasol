@@ -89,8 +89,8 @@ function frame(now) {
   updateMeteors(uTime.value);
 
   // galaxia
-  const gl = .3 + .7 * eIO(clamp((t - (T_BOOM2 - .5)) / 3)) * endFade + .12 * Math.sin(Math.PI * clamp((t - T_HEART) / 2));
-  galU.uGal.value = gl; core.material.opacity = .35 * gl; core.scale.set(5, 5, 1);
+  const gl = .5 + .7 * eIO(clamp((t - (T_BOOM2 - .5)) / 3)) * endFade + .12 * Math.sin(Math.PI * clamp((t - T_HEART) / 2));
+  galU.uGal.value = gl; core.material.opacity = .5 * gl; core.scale.set(5, 5, 1);
 
   updateMessages(t);
   renderer.render(scene, camera);
